@@ -219,9 +219,56 @@
             })
         }
 
+        function drawRadarChart() {
+            let testData = [{ "x": 10, "y": 50 },
+            { "x": 20, "y": 20 },
+            { "x": 50, "y": 10 },
+            { "x": 30, "y": 30 }];
+            // set the dimensions and margins of the graph
+            var margin = { top: 10, right: 30, bottom: 30, left: 60 },
+                width = 460 - margin.left - margin.right,
+                height = 400 - margin.top - margin.bottom;
+
+            // append the svg object to the body of the page
+            var svg = d3.select("#boxPlotContainer")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
+
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+            let x = d3.scaleLinear().range([0, width]);
+            let y = d3.scaleLinear().range([height, 0]);
+
+            x.domain([0, 50]);
+            y.domain([0, 50]);
+            svg
+                .selectAll("testLayers")
+                .data([testData])
+                .enter()
+                .append("polygon")
+                .style("fill", "green")
+                .attr("points", function (d) {
+                    return d.map(function (d) {
+                        return [x(d.x), y(d.y)].join(",");
+                    }).join(" ");
+                });
+
+            //draw radar graph axis
+            //number of axis is number of 
+            //maybe scaleLinear(0, 2*PI)
+            //domain (0, COUNT[])
+            //draw polygons for each state numOfStatesOnGraph
+        }
+
         drawBoxPlot()
 
         drawAreaChart()
+
+        drawRadarChart()
 
         /*
          // Build color scale

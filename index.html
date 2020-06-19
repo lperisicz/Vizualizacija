@@ -6,6 +6,8 @@
 </head>
 
 <body>
+    <img src="https://www.countryflags.io/be/flat/64.png">
+    <input type="range" min="4" max="10" value="4" id="xvalue">
     <div id="boxPlotContainer"></div>
     <script>
 
@@ -219,7 +221,7 @@
             })
         }
 
-        function drawRadarChart() {
+        function drawRadarChart(data, ) {
             let testData = [{ "x": 10, "y": 50 },
             { "x": 20, "y": 20 },
             { "x": 50, "y": 10 },
@@ -228,6 +230,13 @@
             var margin = { top: 10, right: 30, bottom: 30, left: 60 },
                 width = 460 - margin.left - margin.right,
                 height = 400 - margin.top - margin.bottom;
+
+            let center = {
+                x: width / 2,
+                y: height / 2
+            }
+            let numberOfIntervals = 5
+            let numberOfTicks = 3;
 
             // append the svg object to the body of the page
             var svg = d3.select("#boxPlotContainer")
@@ -240,12 +249,67 @@
 
             svg.append("g")
                 .attr("transform", "translate(0," + height + ")")
-            let x = d3.scaleLinear().range([0, width]);
-            let y = d3.scaleLinear().range([height, 0]);
+            let angle = d3
+                .scaleLinear()
+                .range([0, 360])
+                .domain([0, numberOfIntervals]);
+            console.log("DATA")
+            svg.selectAll("radialLines")
+                .data([...Array(numberOfIntervals).keys()])
+                .enter()
+                .append("line")
+                .style("stroke", "black")
+                .attr("x1", center.x)
+                .attr("y1", center.y)
+                .attr("x2", center.x)
+                .attr("y2", 0)
+                .attr("transform", (d) => `rotate(${angle(d)}, ${center.x}, ${center.y})`);
 
-            x.domain([0, 50]);
-            y.domain([0, 50]);
-            svg
+            for (let i = 0; i < numberOfTicks; i++) {
+                let distance = ((i + 1) / numberOfTicks) * center.y - 30;
+                svg
+                    .selectAll(`radialLines_${i}`)
+                    .data([[...Array(numberOfIntervals).keys()]])
+                    .enter()
+                    .append("polygon")
+                    .style("fill", "none")
+                    .style("stroke", "black")
+                    .attr("points", function (d) {
+                        return d.map(function (d) {
+                            let angle2 = ((2 * Math.PI / numberOfIntervals) * d) + Math.PI / 2;
+                            console.log(`ANGLE: ${angle2}, DISTANCE: ${distance}, d: ${d}`)
+                            let x1 = center.x + Math.cos(angle2) * distance
+                            console.log(`X1: ${x1}`)
+                            return [x1, center.y - Math.sin(angle2) * distance].join(",");
+                        }).join(" ");
+                    });
+
+
+
+
+
+
+
+
+                /*let d = ((i + 1) / numberOfTicks) * center.y;
+                let alfa = (2 * Math.PI / numberOfIntervals);
+                let alfaS = 360 / numberOfIntervals;
+                let gamma = 90 - ((180 - alfaS) / 2);
+                let b = 2 * d * Math.sin(alfa / 2);
+                svg.selectAll(`radialLines_${i}`)
+                    .data([...Array(numberOfIntervals).keys()])
+                    .enter()
+                    .append("line")
+                    .style("stroke", "black")
+                    .attr("x1", center.x)
+                    .attr("y1", center.y - d)
+                    .attr("x2", center.x + b)
+                    .attr("y2", center.y - d)
+                    .attr("transform", (data) => `rotate(${gamma}, ${center.x}, ${center.y - d}) translate(0, 100)`)*/
+                //.attr("transform", (data) => ``);
+            }
+
+            /*svg
                 .selectAll("testLayers")
                 .data([testData])
                 .enter()
@@ -255,7 +319,7 @@
                     return d.map(function (d) {
                         return [x(d.x), y(d.y)].join(",");
                     }).join(" ");
-                });
+                });*/
 
             //draw radar graph axis
             //number of axis is number of 
@@ -269,6 +333,71 @@
         drawAreaChart()
 
         drawRadarChart()
+
+        function debounce(func, wait = 100, immediate) {
+            var timeout;
+            return function () {
+                var context = this, args = arguments;
+                var later = function () {
+                    timeout = null;
+                    if (!immediate) func.apply(context, args);
+                };
+                var callNow = immediate && !timeout;
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+                if (callNow) func.apply(context, args);
+            };
+        };
+
+        d3.csv("data_projection.csv", (data) => {
+            console.log("SUCCESS!!")
+            console.log(data)
+            d3.select("#xvalue").on("mouseup", function () {
+                onValueChanged(this.value, data);
+            });
+        }
+        )
+
+        function onValueChanged(value, data) {
+            console.log("The value is " + value);
+            drawRadarChart(transformDataForRadar(data, value), value)
+        }
+        /*
+        maps [
+            {
+                AGE: "1 year"
+        Flag and Footnotes: ""
+        GEO: "Austria"
+        PROJECTION: "Baseline projections"
+        SEX: "Males"
+        TIME: "2020"
+        UNIT: "Person"
+        Value: "43,295"
+        }
+        ]
+        */
+        /*returns {
+            value: [123, 123,12332,3232,1543,546],
+            max: 32123
+        }*/
+        function transformDataForRadar(data, numOfRanges, geo = "Croatia", year = 2019) {
+            //numOfRanges = 3 splits [0-33, 33-66, 66-100+]
+            let values = []
+            let ranges = [...Array(parseInt(numOfRanges)).keys()].map(num => {
+                let borders = [(num * 100 / numOfRanges), (num * 100 / numOfRanges) + (100 / numOfRanges)];
+                let people = data.filter(value => {
+                    let age = parseInt(value.AGE.split(" ")[0])
+                    return age >= borders[0] && age < borders[1] && value.GEO.startsWith(geo) && parseInt(value.TIME) == year
+                }).map(entry => parseInt(entry.Value.replace(',', '')))
+                let numberOfPeople = people.reduce((a, b) => a + b, 0)
+                values.push(numberOfPeople)
+            })
+            let returnObj = {
+                values: values,
+                max: Math.max(...values)
+            }
+            return returnObj
+        }
 
         /*
          // Build color scale
